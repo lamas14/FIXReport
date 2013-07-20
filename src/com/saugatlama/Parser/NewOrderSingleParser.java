@@ -11,12 +11,17 @@ public class NewOrderSingleParser {
 	/*
 	 * Function to get message from file 
 	 */
-	private static String[] getMessage(String fileName) {
+	private static String[] getMessage(String fileName, String delim) {
+		
 		try {
 			String content = new Scanner(new File("NewOrderSingle.txt")).next();
 			
 			//uses <SOH> as a delimiter and parses the content
-			String[] tokens = content.split("\\<SOH>");
+			String[] tokens = content.split("\\"+ delim);
+			if(!content.contains(delim)){
+				System.out.println("No delimiter found");
+				System.exit(1);
+			}
 			return tokens;
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -26,7 +31,9 @@ public class NewOrderSingleParser {
 	
 	/*
 	 * Function to check errors
-	 * Might have to use map or dictionary
+	 * BeginString, BodyLength, and MsgType must be in order
+	 * 
+	 * 
 	 */
 	private static void checkErrors(String[] tokens) {
 		
@@ -40,21 +47,65 @@ public class NewOrderSingleParser {
 		for(int i = 0; i<tokens.length;i++){
 			//splitting every field by delimiter =
 			String[] temp = tokens[i].split("\\=");
+			
+			if(Integer.parseInt(temp[0])<0 ||Integer.parseInt(temp[0])>956){
+				System.out.println("Error: Invalid Tag: " + temp[0]);
+				return;
+			}
+			
+			//checking header order
+			if(i==0 && Integer.parseInt(temp[0]) !=8){
+				System.out.println("Error: This is not a valid message");
+				System.out.println("Make sure the Tag order is correct");
+				return;
+			}
+			if(i==1 && Integer.parseInt(temp[0]) !=9){
+				System.out.println("Error: This is not a valid message");
+				System.out.println("Make sure the Tag order is correct");
+				return;
+			}
+			if(i==2 && Integer.parseInt(temp[0]) !=35){
+				System.out.println("Error: This is not a valid message");
+				System.out.println("Make sure the Tag order is correct");
+				return;
+			}
+			
 			//checking for mandatory fields
-			switch(Integer.valueOf(temp[0])){
+			switch(Integer.parseInt(temp[0])){
 				case 8:
-					beginString = true;
+					if(temp[1].equals("FIX.4.4")){
+						beginString = true;
+					}
+					else{
+						System.out.print(temp[1]);
+						System.out.println("Error: This is not a FIX 4.4 message");
+						return;
+					}
+					break;
 				case 9:
 					bodyLength = true;
+					break;
 				case 35:
-					msgType = true;
+					if(temp[1].equals("D")){
+						msgType = true;
+					}
+					else{
+						System.out.print(temp[1]);
+						System.out.println("Error: This is not a NewOrderSingle message");
+						return;
+					}
+					break;
 				case 49:
 					senderCompID = true;
+					break;
 				case 56:
 					targetCompID = true;
+					break;
+				default:
+					
+					break;
 			}
 		}
-		
 		
 		if(!beginString){
 			System.out.println("Error: Mandatory field 8(BeginString) is missing.");
@@ -85,9 +136,15 @@ public class NewOrderSingleParser {
 	 */
 	public static void main(String[] args){
 		Scanner input = new Scanner(System.in);
-		System.out.print("Please input the file name.");		
+		System.out.print("Please enter the file name: ");		
 		String fileName = input.nextLine();
-		String[] tokens = getMessage(fileName);
+		
+		// I am not sure what kind of delimiter FIX 4.4 uses
+		// So, I used <SOH> as the delimiter
+		// Please change it if it is different
+		String delim = "<SOH>";
+		
+		String[] tokens = getMessage(fileName, delim);
 		
 		checkErrors(tokens);
 	}
